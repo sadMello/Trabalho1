@@ -7,9 +7,8 @@ from Class_bilinear import Bilinear
 
 def salvar(imagem_obj, nome_saida):
     """
-    Salva a imagem na pasta 'output' e a exibe.
-    :param imagem_obj: Objeto Image do Pillow.
-    :param nome_saida: Nome do arquivo de saída.
+    Salva a imagem na pasta 'output'
+    
     """
     os.makedirs("output", exist_ok=True)
     caminho_saida = os.path.join("output", nome_saida)
