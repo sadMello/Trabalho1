@@ -4,7 +4,7 @@ class VizinhoMaisProximo:
     def __init__(self, matriz_img):
         """
         Inicializa o interpolador do vizinho mais próximo.
-        :param matriz_img: Matriz NumPy que representa a imagem em escala de cinza.
+
         """
         self.matriz_img = matriz_img
         self.qtd_linhas, self.qtd_colunas = matriz_img.shape
@@ -13,7 +13,7 @@ class VizinhoMaisProximo:
         """
         Se a imagem tiver dimensões ímpares, duplica a última linha e/ou coluna para que
         seja possível formar blocos completos de 2x2.
-        :return: matriz_ajustada, nova_qtd_linhas, nova_qtd_colunas.
+
         """
         matriz_ajustada = self.matriz_img.copy()
         linhas, cols = self.qtd_linhas, self.qtd_colunas
@@ -32,7 +32,7 @@ class VizinhoMaisProximo:
         """
         Reduz a imagem pela metade selecionando os pixels de índices pares.
         Se a imagem tiver dimensões ímpares, primeiro aplica padding.
-        :return: Matriz com a imagem reduzida.
+
         """
         mat_ajustada, linhas_aj, cols_aj = self.ajustar_dimensao()
         qtd_linhas_reduz = linhas_aj // 2
@@ -46,7 +46,7 @@ class VizinhoMaisProximo:
         Amplia a imagem duplicando cada pixel para formar um bloco 2x2.
         Calcula os índices de destino sem usar a função min(), usando condicionais para
         garantir que os índices não ultrapassem os limites.
-        :return: Matriz com a imagem ampliada.
+
         """
         nova_qtd_linhas = self.qtd_linhas * 2
         nova_qtd_colunas = self.qtd_colunas * 2

@@ -1,96 +1,58 @@
 import numpy as np
 
 class Bilinear:
-    def __init__(self, matriz_img):
-        """
-        Inicializa o interpolador bilinear.
-        :param matriz_img: Matriz NumPy que representa a imagem em escala de cinza.
-        """
-        self.matriz_img = matriz_img
-        self.qtd_linhas, self.qtd_colunas = matriz_img.shape
-
-    def pad_imagem(self):
-        """
-        Aplica padding se necessário (duplica última linha/coluna) para que a imagem tenha dimensões pares.
-        :return: matriz_pad, nova_qtd_linhas, nova_qtd_colunas.
-        """
-        matriz_pad = self.matriz_img.copy()
-        linhas, cols = self.qtd_linhas, self.qtd_colunas
+    def __init__(self, matriz):
         
-        if linhas % 2 != 0:
-            ult_linha = matriz_pad[-1:, :]
-            matriz_pad = np.vstack((matriz_pad, ult_linha))
-            linhas += 1
-        if cols % 2 != 0:
-            ult_col = matriz_pad[:, -1:]
-            matriz_pad = np.hstack((matriz_pad, ult_col))
-            cols += 1
-        return matriz_pad, linhas, cols
-
+        self.matriz = matriz
+        self.qtd_linhas, self.qtd_colunas = matriz.shape
+    
     def reduzir(self):
-        """
-        Reduz a imagem pela metade usando interpolação bilinear.
-        Para cada bloco 2x2, calcula a média dos 4 pixels.
-        :return: Matriz com a imagem reduzida.
-        """
-        mat_pad, linhas_pad, cols_pad = self.pad_imagem()
-        linhas_reduz = linhas_pad // 2
-        cols_reduz = cols_pad // 2
-        matriz_reduzida = np.zeros((linhas_reduz, cols_reduz), dtype=np.uint8)
+        new_h = self.qtd_linhas // 2
+        new_w = self.qtd_colunas // 2
+        matriz_reduzida = np.zeros((new_h, new_w), dtype=np.uint8)
         
-        for i in range(linhas_reduz):
-            for j in range(cols_reduz):
-                orig_lin = i * 2
-                orig_col = j * 2
-                bloco = mat_pad[orig_lin:orig_lin+2, orig_col:orig_col+2]
-                matriz_reduzida[i, j] = np.mean(bloco)
+        # Limita aos pixels válidos
+        for i in range(new_h): 
+            for j in range(new_w):
+                x = min(i*2, self.qtd_linhas-1) # limita os pixels assim: 0 <= x <= qtd_linhas-1, ou seja, não ultrapassa a qtd_linhas da matriz original
+                y = min(j*2, self.qtd_colunas-1) # limita os pixels assim: 0 <= y <= qtd_colunas-1 , ou seja, não ultrapassa a qtd_colunas da matriz original
+
+                matriz_reduzida[i,j] = np.mean([self.matriz[x, y], self.matriz[x, y + 1], self.matriz[x + 1, y], self.matriz[x + 1, y + 1]]).astype(np.uint8) # calcula a média dos 4 pixels
+               
         return matriz_reduzida
 
     def ampliar(self):
-        """
-        Amplia a imagem utilizando interpolação bilinear.
-        Para cada posição na imagem ampliada, calcula a posição correspondente na imagem original (coordenada fracionária)
-        e interpola o valor a partir dos 4 pixels vizinhos.
-        Garante que todas as células da imagem ampliada sejam preenchidas, evitando "buracos".
-        :return: Matriz com a imagem ampliada.
-        """
-        nova_lin = self.qtd_linhas * 2
-        nova_col = self.qtd_colunas * 2
-        matriz_ampliada = np.zeros((nova_lin, nova_col), dtype=np.float32)
-        
-        # Para cada pixel da imagem ampliada
-        for i_dest in range(nova_lin):
-            for j_dest in range(nova_col):
-                # Mapeia para coordenadas na imagem original
-                # Dividindo pelo fator (2) para obter a posição fracionária
-                pos_y = i_dest / 2.0
-                pos_x = j_dest / 2.0
-                y0 = int(pos_y)
-                x0 = int(pos_x)
-                # Se estiver na borda, garante que não ultrapasse os limites
-                if y0 >= self.qtd_linhas - 1:
-                    y0 = self.qtd_linhas - 2
-                if x0 >= self.qtd_colunas - 1:
-                    x0 = self.qtd_colunas - 2
-                y1 = y0 + 1
-                x1 = x0 + 1
 
-                # Distâncias fracionárias
-                dy = pos_y - y0
-                dx = pos_x - x0
+        linhas_ampliadas = self.qtd_linhas * 2
+        cols_ampliadas = self.qtd_colunas * 2
 
-                # Valores dos 4 pixels vizinhos
-                valor00 = self.matriz_img[y0, x0]
-                valor10 = self.matriz_img[y0, x1]
-                valor01 = self.matriz_img[y1, x0]
-                valor11 = self.matriz_img[y1, x1]
+        matriz_ampliada = np.zeros((linhas_ampliadas, cols_ampliadas), dtype=np.uint8)
 
-                # Interpolação bilinear
-                valor_interp = ((1 - dx) * (1 - dy) * valor00 +
-                                dx * (1 - dy) * valor10 +
-                                (1 - dx) * dy * valor01 +
-                                dx * dy * valor11)
-                matriz_ampliada[i_dest, j_dest] = valor_interp
+        # preenche a matriz ampliada com os valores da matriz original nas linhas e colunas pares
+        for i in range(self.qtd_linhas):
+            for j in range(self.qtd_colunas):
+                # Posição original
+                matriz_ampliada[i*2, j*2] = self.matriz[i, j]
 
-        # Converte para uint8 e retorna
-        return np.clip(matriz_ampliada, 0, 255).astype(np.uint8)
+        # calcula os pixels horizontais (f(i,j+1))
+        for i in range(0, linhas_ampliadas, 2):
+            for j in range(1, cols_ampliadas - 1, 2):
+                matriz_ampliada[i, j] = ((int(matriz_ampliada[i, j - 1]) + int(matriz_ampliada[i, j + 1])) // 2)
+
+        # calcula os pixels verticais (f(i+1,j))
+        for i in range(1, linhas_ampliadas - 1, 2):
+            for j in range(0, cols_ampliadas, 2):
+                matriz_ampliada[i, j] = ((int(matriz_ampliada[i - 1, j]) + int(matriz_ampliada[i + 1, j])) // 2)
+
+        # diagonalmente (f(i+1,j+1))
+        for i in range(1, linhas_ampliadas - 1, 2):
+            for j in range(1, cols_ampliadas - 1, 2):
+                soma = (
+                    int(matriz_ampliada[i - 1, j - 1]) +
+                    int(matriz_ampliada[i - 1, j + 1]) +
+                    int(matriz_ampliada[i + 1, j - 1]) +
+                    int(matriz_ampliada[i + 1, j + 1])
+                )
+                matriz_ampliada[i, j] = soma // 4
+
+        return matriz_ampliada
